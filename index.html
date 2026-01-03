@@ -78,16 +78,30 @@
             transition: 0.2s; 
         }
 
-        /* Scanner Styling */
+        /* Scanner & Focus UI */
         #reader {
             width: 100%;
             border-radius: 12px;
             overflow: hidden;
             border: 1.5px solid #eee5db;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             display: none;
             background: #000;
         }
+
+        .focus-container {
+            display: none;
+            background: #fdfaf7;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid #eee5db;
+            margin-bottom: 12px;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .focus-container label { margin-bottom: 0; flex-shrink: 0; }
+        .focus-container input { flex-grow: 1; accent-color: var(--maroon); }
 
         label { display: block; font-size: 0.8rem; margin-bottom: 6px; color: #8a7b6e; font-weight: 500; }
 
@@ -264,10 +278,15 @@
             </div>
 
             <div id="reader"></div>
+            
+            <div class="focus-container" id="focus-ui">
+                <label>Focus</label>
+                <input type="range" id="focus-slider" min="0" max="100" value="50">
+            </div>
 
             <div style="margin-bottom: 12px;">
                 <label>Scan QR</label>
-                <textarea id="qr-text" rows="2" placeholder="Paste scanned data here..."></textarea>
+                <textarea id="qr-text" rows="2" placeholder="Scan result appears here..."></textarea>
             </div>
 
             <div style="margin-bottom: 8px;">
@@ -366,9 +385,6 @@
             modalInput.onclick = (e) => { e.stopPropagation(); activeInput = modalInput; preview.innerText = modalInput.value; numpad.classList.add('active'); };
         }
 
-        // --- NEW AUDIO & SCANNER LOGIC ---
-        
-        // Function to create a beep sound
         function playBeep() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -376,15 +392,17 @@
                 const gainNode = audioCtx.createGain();
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.1);
-            } catch(e) { console.log("Audio not supported"); }
+            } catch(e) {}
         }
 
+        // --- UPDATED CAMERA LOGIC WITH FOCUS & SMART PASTE ---
         const html5QrCode = new Html5Qrcode("reader");
+        const focusUI = document.getElementById("focus-ui");
+        const focusSlider = document.getElementById("focus-slider");
         let isScannerOn = false;
 
         document.getElementById("scan-camera-btn").onclick = async () => {
@@ -392,32 +410,56 @@
             if(isScannerOn) {
                 await html5QrCode.stop();
                 readerDiv.style.display = "none";
+                focusUI.style.display = "none";
                 isScannerOn = false;
             } else {
                 readerDiv.style.display = "block";
                 isScannerOn = true;
                 html5QrCode.start(
                     { facingMode: "environment" }, 
-                    { fps: 15, qrbox: { width: 250, height: 250 } },
+                    { fps: 20, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
                         playBeep();
-                        // Paste text into box and add a newline (Enter)
-                        qrText.value = decodedText + "\n";
-                        // Trigger the input logic
+                        
+                        // Smart Paste: Append below existing text if any
+                        if (qrText.value.trim().length > 0) {
+                            qrText.value = qrText.value.trim() + "\n" + decodedText + "\n";
+                        } else {
+                            qrText.value = decodedText + "\n";
+                        }
+                        
                         qrText.dispatchEvent(new Event('input'));
                         
-                        // Stop scanner and hide after success
                         html5QrCode.stop().then(() => {
                             readerDiv.style.display = "none";
+                            focusUI.style.display = "none";
                             isScannerOn = false;
                         });
                     }
-                ).catch(err => alert("Camera error: Ensure you are on HTTPS and allow camera access."));
+                ).then(() => {
+                    // Try to initialize focus slider if hardware supports it
+                    try {
+                        const track = html5QrCode.getRunningTrack();
+                        const capabilities = track.getCapabilities();
+                        if (capabilities.focusDistance) {
+                            focusUI.style.display = "flex";
+                            focusSlider.min = capabilities.focusDistance.min;
+                            focusSlider.max = capabilities.focusDistance.max;
+                            focusSlider.step = capabilities.focusDistance.step;
+                            focusSlider.value = track.getSettings().focusDistance || capabilities.focusDistance.min;
+                            
+                            focusSlider.oninput = (e) => {
+                                track.applyConstraints({
+                                    advanced: [{ focusMode: "manual", focusDistance: parseFloat(e.target.value) }]
+                                });
+                            };
+                        }
+                    } catch(e) { console.log("Focus hardware control not supported"); }
+                }).catch(err => alert("Camera error: " + err));
             }
         };
 
-        // --- END OF SCANNER MODS ---
-
+        // All calculation logic preserved below
         window.closeNumpad = () => { numpad.classList.remove('active'); activeInput = null; setTimeout(() => qrText.focus(), 100); };
 
         window.numTap = (n) => { 
@@ -446,13 +488,19 @@
 
         window.onload = () => { const r = localStorage.getItem("silverRate"); if(r) rateEl.value = r; qrText.focus(); };
 
-        document.addEventListener("click", (e) => { if(!e.target.closest('.actions-row') && !e.target.closest('.numpad') && !e.target.closest('.title-row')) setTimeout(forceFocus, 50); });
+        document.addEventListener("click", (e) => { if(!e.target.closest('.actions-row') && !e.target.closest('.numpad') && !e.target.closest('.title-row') && !e.target.closest('.focus-container')) setTimeout(forceFocus, 50); });
 
         qrText.addEventListener("input", function() {
             errorDiv.style.display = "none";
             const lines = this.value.split('\n').filter(l => l.trim());
             if (lines.length > 1) { 
-                if (current && !items.find(it => it.code === current.code)) items.push({...current}); 
+                // Loop through all but the last line to add to history automatically
+                for (let i = 0; i < lines.length - 1; i++) {
+                    let temp = parseLine(lines[i].trim());
+                    if (temp && !items.some(it => it.code === temp.code)) {
+                        items.push(temp);
+                    }
+                }
                 this.value = lines[lines.length - 1]; 
                 renderHistory(); 
             }
