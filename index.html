@@ -88,17 +88,6 @@
             background: #000;
         }
 
-        .focus-container {
-            display: none;
-            background: #fdfaf7;
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid #eee5db;
-            margin-bottom: 12px;
-            align-items: center;
-            gap: 10px;
-        }
-
         label { display: block; font-size: 0.8rem; margin-bottom: 6px; color: #8a7b6e; font-weight: 500; }
 
         textarea, input[type="number"] { 
@@ -271,15 +260,10 @@
             </div>
 
             <div id="reader"></div>
-            
-            <div class="focus-container" id="focus-ui">
-                <label>Focus</label>
-                <input type="range" id="focus-slider" min="0" max="100" value="50">
-            </div>
 
             <div style="margin-bottom: 12px;">
-                <label>Scan QR (Auto-Add)</label>
-                <textarea id="qr-text" rows="2" placeholder="Scan QR to add item..." inputmode="none" readonly></textarea>
+                <label>Scan QR (Auto-process)</label>
+                <textarea id="qr-text" rows="2" placeholder="Scan QR here..." inputmode="none"></textarea>
             </div>
 
             <div style="margin-bottom: 8px;">
@@ -355,13 +339,12 @@
               resBody = document.getElementById("history-body"), 
               histSection = document.getElementById("history-section"), 
               totalEl = document.getElementById("history-total"), 
-              errorDiv = document.getElementById("duplicate-error");
-
-        const editModal = document.getElementById("edit-modal"), 
-              modalInput = document.getElementById("modal-input"), 
-              modalTitle = document.getElementById("modal-item-title"),
+              errorDiv = document.getElementById("duplicate-error"),
               numpad = document.getElementById("numpad"), 
-              preview = document.getElementById("num-preview");
+              preview = document.getElementById("num-preview"),
+              editModal = document.getElementById("edit-modal"), 
+              modalInput = document.getElementById("modal-input"), 
+              modalTitle = document.getElementById("modal-item-title");
 
         const itemNames = {"SAS":"Agarbati Stand","SAL":"Amoliya","SAM":"Animal Murti","SAT":"Antiques","SBM":"Baby Braclet","SKB":"Baby Kada","SBJ":"Baby Leg Kada","SBB":"Baju Band","SBG":"Bangles","SBN":"Banta","SBL":"Bell","SBX":"Box","SBK":"Bucket","SCS":"Chain Pandant Set","SCH":"Chains","SCA":"Challa","SCT":"Chatar","SCG":"Chirag","SCL":"Chotla","SCB":"Coins & Bars","SCR":"Couple Rings","SCC":"Couple Set","SCU":"Cup","SDY":"Diya","SER":"Earings","SFC":"Face/Mukota","SCP":"Fancy Pandant","SFW":"Ferwa","SFL":"Flower","SFP":"Foolpatra","SGN":"Ganpati","SGB":"Gents Bracelet","SGR":"Gents Ring","SGH":"Ghar","SGL":"Glass","SGP":"God Pandant","SBT":"Gugra","SGD":"Gulabdani","SHP":"Hath Pan","SID":"Itardani","SJO":"Jodva","SJL":"Jula","SKA":"KADA","SKK":"Kamar Kandora","SKP":"Kapoor Aarti","SKR":"Karanda","SKY":"KEY CHAIN","SKI":"Kohiri/Keri","SLB":"Ladies Bracelet","SLR":"Ladies Ring","SLT":"Lanturn","SLK":"Leg Kada","SLO":"Lota","SLW":"Loti+Wati","SMP":"Mangalsutra Pandant","SMS":"Mangalsutra Set","SMN":"Mani","SPJ":"Mix Pooja","SMT":"Moti Ring","SMK":"Mukut","SMR":"Murti","SNY":"NARYAL","SNK":"Necklace","SPH":"PATH","SPI":"PATRA & YANTRA","SPL":"Payal","SPK":"PICHKARI","SSP":"PIN/BROUCH","SPB":"PLAIN BANDS","SPR":"PURSE","SRD":"Rudhraksh & More","SSH":"Shihasan","SNS":"Shivling+Nag","SSY":"SHREE YANTRA","SSM":"SOLID MURTI","SSF":"Spoon/Fali","STB":"TABIZ","STT":"TATTALU","STE":"Test","STL":"THALI","STG":"Toe Rings","STI":"Trishul","STU":"TULSI","STR":"TURTLE RING","SVG":"Vegetable","SWC":"Waist Chain","SWL":"Watch Charms","SWS":"Watches","SWT":"Wati"};
 
@@ -376,7 +359,55 @@
             modalInput.onclick = (e) => { e.stopPropagation(); activeInput = modalInput; preview.innerText = modalInput.value; numpad.classList.add('active'); };
         }
 
-        // --- SCANNER LOGIC ---
+        // --- THE "ENTER" SIMULATOR FUNCTION ---
+        function simulateEnter() {
+            const raw = qrText.value.trim();
+            if (raw.length > 5) {
+                const parsed = parseLine(raw);
+                if (parsed) {
+                    if (!items.some(it => it.code === parsed.code)) {
+                        items.push(parsed);
+                        renderHistory();
+                        errorDiv.style.display = "none";
+                    } else {
+                        errorDiv.style.display = "block";
+                    }
+                }
+            }
+            // Clear the box for the next scan immediately
+            qrText.value = "";
+            current = null;
+            resPanel.style.display = "none";
+        }
+
+        // Watch for physical scanner input
+        // Scanners usually fire "Enter" (keyCode 13) at the end
+        qrText.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                simulateEnter();
+            }
+        });
+
+        // Fallback: If scanner doesn't send Enter, simulate it after a short pause in typing
+        let scanTimer;
+        qrText.addEventListener("input", function() {
+            clearTimeout(scanTimer);
+            errorDiv.style.display = "none";
+            
+            // Show preview logic
+            current = parseLine(this.value.trim());
+            updatePanel();
+
+            // Auto-trigger "Enter" after 300ms of no activity
+            scanTimer = setTimeout(() => {
+                if (this.value.trim().length > 10) {
+                    simulateEnter();
+                }
+            }, 300);
+        });
+
+        // --- CAMERA SCANNER ---
         const html5QrCode = new Html5Qrcode("reader");
         let isScannerOn = false;
 
@@ -387,47 +418,14 @@
             } else {
                 readerDiv.style.display = "block"; isScannerOn = true;
                 html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (decodedText) => {
-                    // Manual trigger for camera scan
-                    qrText.value = decodedText + "\n";
-                    qrText.dispatchEvent(new Event('input'));
+                    qrText.value = decodedText;
+                    simulateEnter(); // Trigger enter after camera scan
                     html5QrCode.stop(); readerDiv.style.display = "none"; isScannerOn = false;
                 }).catch(err => alert("Camera error: " + err));
             }
         };
 
-        // --- INPUT PROCESSING ---
-        qrText.addEventListener("input", function() {
-            errorDiv.style.display = "none";
-            let content = this.value;
-            
-            // If the content contains a newline, it's a finished scan (either from scanner or manual)
-            if (content.includes('\n')) {
-                const lines = content.split('\n');
-                lines.forEach(line => {
-                    const trimmed = line.trim();
-                    if (trimmed.length > 5) {
-                        let parsed = parseLine(trimmed);
-                        if (parsed) {
-                            if (!items.some(it => it.code === parsed.code)) {
-                                items.push(parsed);
-                                renderHistory();
-                            } else {
-                                errorDiv.style.display = "block";
-                            }
-                        }
-                    }
-                });
-                // Clear the box after processing to be ready for the NEXT scan
-                this.value = ""; 
-                current = null;
-                resPanel.style.display = "none";
-            } else {
-                // Partial scan (preview)
-                current = parseLine(content.trim());
-                updatePanel();
-            }
-        });
-
+        // --- UTILS ---
         function parseLine(raw) {
             const p = raw.split(","); if (p.length < 6) return null;
             const rate = parseFloat(rateEl.value) || 0, code = p[0].trim(), wt = parseFloat(p[3]), making = parseFloat(p[5]);
@@ -451,17 +449,16 @@
             document.getElementById("result-code").textContent = `${current.code} • ${current.name}`;
             document.getElementById("result-mrp-val").textContent = current.mrp.toFixed(2);
             const meta = document.getElementById("result-meta");
-            meta.innerHTML = current.show ? `<span style="font-weight:500;">Net wt: ${current.wt.toFixed(3)}g | Rate: ${current.rate}</span>` : "";
+            meta.innerHTML = current.show ? `<span style="font-weight:500;">Net wt: ${current.wt.toFixed(3)}g</span>` : "";
         }
 
         function renderHistory() {
             if (!items.length) { histSection.style.display="none"; return; }
             histSection.style.display="block";
-            resBody.innerHTML = items.map((it, i) => `<tr><td>${i+1}</td><td style="font-weight:600;">${it.code}</td><td>${it.name}</td><td>${it.show ? it.wt.toFixed(3) : '—'}</td><td class="mrp-clickable" ondblclick="openEditModal(${i})">₹${it.mrp.toFixed(2)}</td><td>${it.isHigh ? `<label class="switch"><input type="checkbox" ${it.show?'checked':''} onchange="toggleHist(${i})"><span class="slider"></span></label>` : ''}</td><td><button class="btn-delete" onclick="deleteItem(${i})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18m-2 0v14c0-1-1-2-2-2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button></td></tr>`).join("");
+            resBody.innerHTML = items.map((it, i) => `<tr><td>${i+1}</td><td style="font-weight:600;">${it.code}</td><td>${it.name}</td><td>${it.show ? it.wt.toFixed(3) : '—'}</td><td class="mrp-clickable" ondblclick="openEditModal(${i})">₹${it.mrp.toFixed(2)}</td><td>${it.isHigh ? `<label class="switch"><input type="checkbox" ${it.show?'checked':''} onchange="toggleHist(${i})"><span class="slider"></span></label>` : ''}</td><td><button class="btn-delete" onclick="deleteItem(${i})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button></td></tr>`).join("");
             totalEl.textContent = items.reduce((s, it) => s + it.mrp, 0).toFixed(2);
         }
 
-        // --- UI ACTIONS ---
         window.openEditModal = (index) => {
             activeEditIndex = index; const it = items[index];
             modalTitle.textContent = `Edit Making: ${it.code}`; modalInput.value = it.making; editModal.style.display = "flex";
@@ -482,18 +479,11 @@
         window.toggleHist = (i) => { items[i].show = !items[i].show; renderHistory(); };
         window.deleteItem = (i) => { items.splice(i, 1); renderHistory(); qrText.focus(); };
 
-        document.getElementById("add-btn").onclick = () => { 
-            if(current){ 
-                if (!items.some(it => it.code === current.code)) { items.push({...current}); }
-                current=null; qrText.value=""; resPanel.style.display="none"; renderHistory(); 
-            } 
-            qrText.focus(); 
-        };
-
+        document.getElementById("add-btn").onclick = () => { if(current) simulateEnter(); qrText.focus(); };
         document.getElementById("clear-btn").onclick = () => { current = null; qrText.value = ""; resPanel.style.display = "none"; qrText.focus(); };
         document.getElementById("reset-btn").onclick = () => { items=[]; current=null; qrText.value=""; renderHistory(); qrText.focus(); };
 
-        // --- NUMPAD HELPERS ---
+        // --- NUMPAD ---
         window.closeNumpad = () => { numpad.classList.remove('active'); activeInput = null; setTimeout(() => qrText.focus(), 100); };
         window.numTap = (n) => { 
             if (preview.innerText === '0' && n !== '.') preview.innerText = n; else preview.innerText += n;
@@ -512,10 +502,9 @@
             renderHistory();
         }
 
-        // --- SAMPLE & INITIALIZE ---
         document.getElementById("sample-btn").onclick = () => { 
-            qrText.value = "STE1,925,1,0.9,1,200,\\Gm,,,,,,,,,,,,,, \n"; 
-            qrText.dispatchEvent(new Event('input')); 
+            qrText.value = "STE1,925,1,0.9,1,200,\\Gm,,,,,,,,,,,,,,"; 
+            simulateEnter(); 
         };
 
         window.onload = () => { 
