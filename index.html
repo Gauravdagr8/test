@@ -7,19 +7,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet" />
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
+    
     <style>
-        :root {
-            --maroon: #7a2222;
-            --maroon-dark: #4d1313;
-            --gold: #d9b25f;
-            --bg: #f7f3ee;
-            --text: #5f5146;
+        :root { 
+            --maroon: #7a2222; 
+            --maroon-dark: #4d1313; 
+            --gold: #d9b25f; 
+            --bg: #f7f3ee; 
+            --text: #5f5146; 
         }
 
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
             -webkit-user-select: none;
             user-select: none;
         }
@@ -29,28 +29,28 @@
             user-select: text;
         }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: "Poppins", sans-serif;
-            background: radial-gradient(circle at top, #fbe9d7, #f3ebe4 35%, #e6ded6 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            color: var(--text);
-            touch-action: manipulation;
+        body { 
+            margin: 0; 
+            min-height: 100vh; 
+            font-family: "Poppins", sans-serif; 
+            background: radial-gradient(circle at top, #fbe9d7, #f3ebe4 35%, #e6ded6 100%); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+            color: var(--text); 
+            touch-action: manipulation; 
         }
 
         .shell { max-width: 580px; width: 100%; }
 
-        .card {
-            background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12);
-            padding: 28px 24px;
-            position: relative;
-            overflow: hidden;
+        .card { 
+            background: #ffffff; 
+            border-radius: 24px; 
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12); 
+            padding: 28px 24px; 
+            position: relative; 
+            overflow: hidden; 
         }
 
         .brand-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
@@ -58,26 +58,27 @@
         .brand-name { font-family: "Playfair Display", serif; font-size: 1.5rem; color: var(--maroon-dark); line-height: 1.2; }
         .brand-subtitle { font-size: 0.75rem; text-transform: uppercase; color: #8a7b6e; letter-spacing: 0.05em; }
 
-        .divider {
-            height: 1px;
-            background: linear-gradient(to right, transparent, rgba(0,0,0,0.08), transparent);
-            margin: 12px 0 18px;
+        .divider { 
+            height: 1px; 
+            background: linear-gradient(to right, transparent, rgba(0,0,0,0.08), transparent); 
+            margin: 12px 0 18px; 
         }
 
         .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         h2 { margin: 0; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.18em; color: #a19388; font-weight: 600; }
 
-        .btn-small {
-            font-size: 0.7rem;
-            padding: 5px 12px;
-            border-radius: 999px;
-            border: 1px solid #e1d6c8;
-            cursor: pointer;
-            background: #fdfaf7;
-            color: #8a7b6e;
-            transition: 0.2s;
+        .btn-small { 
+            font-size: 0.7rem; 
+            padding: 5px 12px; 
+            border-radius: 999px; 
+            border: 1px solid #e1d6c8; 
+            cursor: pointer; 
+            background: #fdfaf7; 
+            color: #8a7b6e; 
+            transition: 0.2s; 
         }
 
+        /* Scanner & Focus UI */
         #reader {
             width: 100%;
             border-radius: 12px;
@@ -99,88 +100,496 @@
             gap: 10px;
         }
 
-        .focus-container label { margin-bottom: 0; }
+        .focus-container label { margin-bottom: 0; flex-shrink: 0; }
         .focus-container input { flex-grow: 1; accent-color: var(--maroon); }
+
+        label { display: block; font-size: 0.8rem; margin-bottom: 6px; color: #8a7b6e; font-weight: 500; }
+
+        textarea, input[type="number"] { 
+            width: 100%; 
+            border-radius: 12px; 
+            border: 1.5px solid #eee5db; 
+            padding: 10px 14px; 
+            font-size: 0.9rem; 
+            font-family: "Poppins", monospace; 
+            background: #fbf9f7; 
+            outline: none; 
+            transition: border-color 0.3s; 
+        }
+
+        textarea:focus { border-color: var(--gold); background: #fff; }
+
+        .modal-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.4); 
+            backdrop-filter: blur(4px); 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100; 
+        }
+
+        .modal-content { 
+            background: #fff; 
+            padding: 24px; 
+            border-radius: 20px; 
+            width: 90%; 
+            max-width: 350px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            text-align: center; 
+        }
+
+        .modal-title { font-family: "Playfair Display", serif; font-size: 1.2rem; color: var(--maroon-dark); margin-bottom: 16px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+        #duplicate-error { 
+            color: var(--maroon); 
+            font-size: 0.75rem; 
+            margin: 8px 0; 
+            text-align: center; 
+            display: none; 
+            font-weight: 600; 
+            background: #fff1f1; 
+            padding: 6px; 
+            border-radius: 8px; 
+        }
+
+        .result-panel { 
+            margin-top: 10px; 
+            border-radius: 20px; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #fffcf5, #f8f1e5); 
+            border: 1px solid rgba(217,178,95,0.4); 
+            display: none; 
+        }
+
+        .result-mrp { font-family: "Playfair Display", serif; font-size: 2.2rem; color: var(--maroon-dark); font-weight: 700; }
+
+        .actions-row { display: flex; gap: 8px; margin-top: 14px; }
+
+        .btn-pill { 
+            flex: 1; 
+            font-size: 0.8rem; 
+            padding: 12px 0; 
+            border-radius: 999px; 
+            border: none; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            font-weight: 600; 
+        }
+
+        .btn-primary { background: linear-gradient(135deg, var(--maroon), var(--maroon-dark)); color: #fff; flex: 2; }
+        .btn-outline { background: #fff; border: 1.5px solid #eee5db; color: #8a7b6e; }
+
+        .btn-grey { 
+            background: #f0ece7 !important; 
+            border: 1.5px solid #e1d6c8 !important; 
+            color: #73685d !important; 
+        }
+
+        .history { 
+            margin-top: 20px; 
+            border-radius: 20px; 
+            border: 1.5px solid #eee5db; 
+            background: #fdfbf9; 
+            padding: 16px; 
+            display: none; 
+        }
+
+        .history-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+        .history-table th, .history-table td { padding: 12px 6px; text-align: right; border-bottom: 1px solid #f0e9e1; }
+        .history-table th:nth-child(2), .history-table td:nth-child(2), .history-table th:nth-child(3), .history-table td:nth-child(3) { text-align: left; }
+        .history-table th { color: #b5a89d; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; }
+
+        .mrp-clickable { cursor: pointer; color: var(--maroon-dark); font-weight: 600; border-bottom: 1px dashed #d9b25f; }
+        .btn-delete { background: none; border: none; cursor: pointer; color: #c9bcaf; width: 100%; display: flex; justify-content: center; }
+
+        .switch { position: relative; display: inline-block; width: 32px; height: 18px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background-color: #e1d6c8; transition: 0.3s; border-radius: 18px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: 0.3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--maroon); }
+        input:checked + .slider:before { transform: translateX(14px); }
+
+        .numpad { 
+            position: fixed; 
+            bottom: 0; left: 0; right: 0; 
+            background: #fff; 
+            z-index: 1000; 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1); 
+            border-top-left-radius: 24px; 
+            border-top-right-radius: 24px; 
+            padding: 15px; 
+            transform: translateY(100%); 
+            transition: transform 0.3s ease; 
+            display: none; 
+        }
+
+        .is-mobile .numpad { display: block; }
+        .numpad.active { transform: translateY(0); }
+
+        .numpad-preview { 
+            background: #fdfaf7; 
+            padding: 10px; 
+            border-radius: 12px; 
+            text-align: center; 
+            margin-bottom: 10px; 
+            border: 1px solid #eee5db; 
+            font-weight: 600; 
+            color: var(--maroon); 
+            font-size: 1.2rem; 
+        }
+
+        .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .numpad-grid button { 
+            background: #fdfaf7; 
+            border: 1px solid #eee5db; 
+            padding: 15px; 
+            font-size: 1.3rem; 
+            border-radius: 12px; 
+            color: var(--maroon-dark); 
+            font-weight: 600; 
+            cursor: pointer; 
+        }
+        .numpad-grid .done-btn { background: var(--maroon) !important; color: #fff !important; grid-column: span 3; font-size: 1rem !important; margin-top: 5px; }
     </style>
 </head>
 
 <body>
-<div class="shell">
-<div class="card">
+    <div class="shell">
+        <div class="card">
+            <div class="brand-header">
+                <img src="logo.png" alt="Logo" class="brand-logo" />
+                <div class="brand-text">
+                    <div class="brand-name">Shree Mangalam Jewellers</div>
+                    <div class="brand-subtitle">Specialist in Silver 925 • Since 1994</div>
+                </div>
+            </div>
 
-<div class="title-row">
-    <h2>Quick Quotation</h2>
-    <button class="btn-small" id="scan-camera-btn">📷 Scan</button>
-</div>
+            <div class="divider"></div>
 
-<div id="reader"></div>
+            <div class="title-row">
+                <h2>Quick Quotation</h2>
+                <div style="display:flex; gap: 8px;">
+                    <button class="btn-small" id="scan-camera-btn">📷 Scan</button>
+                    <button class="btn-small" id="sample-btn">Sample</button>
+                </div>
+            </div>
 
-<div class="focus-container" id="focus-ui">
-    <label>Focus</label>
-    <input type="range" id="focus-slider">
-</div>
+            <div id="reader"></div>
+            
+            <div class="focus-container" id="focus-ui">
+                <label>Focus</label>
+                <input type="range" id="focus-slider" min="0" max="100" value="50">
+            </div>
 
-<textarea id="qr-text" rows="2"></textarea>
+            <div style="margin-bottom: 12px;">
+                <label>Scan QR</label>
+                <textarea id="qr-text" rows="2" placeholder="Scan result appears here..."></textarea>
+            </div>
 
-</div>
-</div>
+            <div style="margin-bottom: 8px;">
+                <label>Silver rate per gram (₹)</label>
+                <input id="silver-rate" type="number" step="0.01" value="225" />
+            </div>
 
-<script>
-const html5QrCode = new Html5Qrcode("reader");
-const focusUI = document.getElementById("focus-ui");
-const focusSlider = document.getElementById("focus-slider");
-let isScannerOn = false;
+            <div id="duplicate-error">⚠ Item already in history.</div>
 
-document.getElementById("scan-camera-btn").onclick = async () => {
-    const readerDiv = document.getElementById("reader");
+            <div class="result-panel" id="result-panel">
+                <div style="font-size:0.65rem; text-transform:uppercase; color:#b0956b; letter-spacing:0.25em;">MRP Estimate</div>
+                <div id="result-code" style="font-size:0.85rem; color:#8a7b6e; font-weight:500;"></div>
+                <div class="result-mrp">₹<span id="result-mrp-val">0.00</span></div>
+                <div class="result-meta" id="result-meta"></div>
+            </div>
 
-    if (isScannerOn) {
-        await html5QrCode.stop();
-        readerDiv.style.display = "none";
-        focusUI.style.display = "none";
-        isScannerOn = false;
-        return;
-    }
+            <div class="actions-row">
+                <button class="btn-pill btn-primary" id="add-btn">Add item</button>
+                <button class="btn-pill btn-outline btn-grey" id="clear-btn">Clear</button>
+                <button class="btn-pill btn-outline" id="reset-btn">Reset</button>
+            </div>
 
-    readerDiv.style.display = "block";
-    isScannerOn = true;
+            <div class="history" id="history-section">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items: baseline;">
+                    <span style="font-size:0.7rem; text-transform:uppercase; color:#b5a89d; font-weight:700;">History (Double-Click MRP)</span>
+                    <span style="font-size:0.9rem; color:var(--maroon-dark);">Total: <b>₹<span id="history-total">0.00</span></b></span>
+                </div>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Code</th>
+                            <th>Item</th>
+                            <th>Net wt</th>
+                            <th>MRP</th>
+                            <th style="width:40px;"></th>
+                            <th style="width:30px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-    html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 20, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-            document.getElementById("qr-text").value += decodedText + "\n";
-            html5QrCode.stop();
-            readerDiv.style.display = "none";
-            focusUI.style.display = "none";
-            isScannerOn = false;
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <div class="modal-title" id="modal-item-title">Update Making</div>
+            <label>New Making Charges (₹/gm)</label>
+            <input type="number" id="modal-input" placeholder="Enter value">
+            <div class="modal-actions">
+                <button class="btn-pill btn-primary" onclick="confirmModalEdit()">Save</button>
+                <button class="btn-pill btn-outline" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="numpad" id="numpad">
+        <div class="numpad-preview" id="num-preview">0</div>
+        <div class="numpad-grid">
+            <button onclick="numTap('1')">1</button><button onclick="numTap('2')">2</button><button onclick="numTap('3')">3</button>
+            <button onclick="numTap('4')">4</button><button onclick="numTap('5')">5</button><button onclick="numTap('6')">6</button>
+            <button onclick="numTap('7')">7</button><button onclick="numTap('8')">8</button><button onclick="numTap('9')">9</button>
+            <button onclick="numTap('.')">.</button><button onclick="numTap('0')">0</button><button onclick="numDel()">⌫</button>
+            <button class="done-btn" onclick="closeNumpad()">DONE / CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+        const qrText = document.getElementById("qr-text"), 
+              rateEl = document.getElementById("silver-rate"), 
+              resPanel = document.getElementById("result-panel"), 
+              resBody = document.getElementById("history-body"), 
+              histSection = document.getElementById("history-section"), 
+              totalEl = document.getElementById("history-total"), 
+              errorDiv = document.getElementById("duplicate-error");
+
+        const editModal = document.getElementById("edit-modal"), 
+              modalInput = document.getElementById("modal-input"), 
+              modalTitle = document.getElementById("modal-item-title");
+
+        const numpad = document.getElementById("numpad"), 
+              preview = document.getElementById("num-preview");
+
+        const itemNames = {"SAS":"Agarbati Stand","SAL":"Amoliya","SAM":"Animal Murti","SAT":"Antiques","SBM":"Baby Braclet","SKB":"Baby Kada","SBJ":"Baby Leg Kada","SBB":"Baju Band","SBG":"Bangles","SBN":"Banta","SBL":"Bell","SBX":"Box","SBK":"Bucket","SCS":"Chain Pandant Set","SCH":"Chains","SCA":"Challa","SCT":"Chatar","SCG":"Chirag","SCL":"Chotla","SCB":"Coins & Bars","SCR":"Couple Rings","SCC":"Couple Set","SCU":"Cup","SDY":"Diya","SER":"Earings","SFC":"Face/Mukota","SCP":"Fancy Pandant","SFW":"Ferwa","SFL":"Flower","SFP":"Foolpatra","SGN":"Ganpati","SGB":"Gents Bracelet","SGR":"Gents Ring","SGH":"Ghar","SGL":"Glass","SGP":"God Pandant","SBT":"Gugra","SGD":"Gulabdani","SHP":"Hath Pan","SID":"Itardani","SJO":"Jodva","SJL":"Jula","SKA":"KADA","SKK":"Kamar Kandora","SKP":"Kapoor Aarti","SKR":"Karanda","SKY":"KEY CHAIN","SKI":"Kohiri/Keri","SLB":"Ladies Bracelet","SLR":"Ladies Ring","SLT":"Lanturn","SLK":"Leg Kada","SLO":"Lota","SLW":"Loti+Wati","SMP":"Mangalsutra Pandant","SMS":"Mangalsutra Set","SMN":"Mani","SPJ":"Mix Pooja","SMT":"Moti Ring","SMK":"Mukut","SMR":"Murti","SNY":"NARYAL","SNK":"Necklace","SPH":"PATH","SPI":"PATRA & YANTRA","SPL":"Payal","SPK":"PICHKARI","SSP":"PIN/BROUCH","SPB":"PLAIN BANDS","SPR":"PURSE","SRD":"Rudhraksh & More","SSH":"Shihasan","SNS":"Shivling+Nag","SSY":"SHREE YANTRA","SSM":"SOLID MURTI","SSF":"Spoon/Fali","STB":"TABIZ","STT":"TATTALU","STE":"Test","STL":"THALI","STG":"Toe Rings","STI":"Trishul","STU":"TULSI","STR":"TURTLE RING","SVG":"Vegetable","SWC":"Waist Chain","SWL":"Watch Charms","SWS":"Watches","SWT":"Wati"};
+
+        let items = [], current = null, activeEditIndex = null, isModalOpen = false, activeInput = null;
+
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0);
+
+        if (isMobile) {
+            document.body.classList.add('is-mobile');
+            rateEl.readOnly = true; 
+            modalInput.readOnly = true;
+            rateEl.onclick = (e) => { e.stopPropagation(); activeInput = rateEl; preview.innerText = rateEl.value; numpad.classList.add('active'); };
+            modalInput.onclick = (e) => { e.stopPropagation(); activeInput = modalInput; preview.innerText = modalInput.value; numpad.classList.add('active'); };
         }
-    ).then(() => {
-        try {
-            const track = html5QrCode.getRunningTrack();
-            const caps = track.getCapabilities();
 
-            if (caps.focusDistance) {
-                focusUI.style.display = "flex";
-                focusSlider.min = caps.focusDistance.min;
-                focusSlider.max = caps.focusDistance.max;
-                focusSlider.step = caps.focusDistance.step;
-                focusSlider.value = track.getSettings().focusDistance || caps.focusDistance.min;
+        function playBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } catch(e) {}
+        }
 
-                focusSlider.oninput = e => {
-                    track.applyConstraints({
-                        advanced: [{
-                            focusMode: "manual",
-                            focusDistance: parseFloat(e.target.value)
-                        }]
-                    });
-                };
+        // --- UPDATED CAMERA LOGIC WITH FOCUS & SMART PASTE ---
+        const html5QrCode = new Html5Qrcode("reader");
+        const focusUI = document.getElementById("focus-ui");
+        const focusSlider = document.getElementById("focus-slider");
+        let isScannerOn = false;
+
+        document.getElementById("scan-camera-btn").onclick = async () => {
+            const readerDiv = document.getElementById("reader");
+            if(isScannerOn) {
+                await html5QrCode.stop();
+                readerDiv.style.display = "none";
+                focusUI.style.display = "none";
+                isScannerOn = false;
+            } else {
+                readerDiv.style.display = "block";
+                isScannerOn = true;
+                html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    { fps: 20, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        playBeep();
+                        
+                        // Smart Paste: Append below existing text if any
+                        if (qrText.value.trim().length > 0) {
+                            qrText.value = qrText.value.trim() + "\n" + decodedText + "\n";
+                        } else {
+                            qrText.value = decodedText + "\n";
+                        }
+                        
+                        qrText.dispatchEvent(new Event('input'));
+                        
+                        html5QrCode.stop().then(() => {
+                            readerDiv.style.display = "none";
+                            focusUI.style.display = "none";
+                            isScannerOn = false;
+                        });
+                    }
+                ).then(() => {
+                    // Try to initialize focus slider if hardware supports it
+                    try {
+                        const track = html5QrCode.getRunningTrack();
+                        const capabilities = track.getCapabilities();
+                        if (capabilities.focusDistance) {
+                            focusUI.style.display = "flex";
+                            focusSlider.min = capabilities.focusDistance.min;
+                            focusSlider.max = capabilities.focusDistance.max;
+                            focusSlider.step = capabilities.focusDistance.step;
+                            focusSlider.value = track.getSettings().focusDistance || capabilities.focusDistance.min;
+                            
+                            focusSlider.oninput = (e) => {
+                                track.applyConstraints({
+                                    advanced: [{ focusMode: "manual", focusDistance: parseFloat(e.target.value) }]
+                                });
+                            };
+                        }
+                    } catch(e) { console.log("Focus hardware control not supported"); }
+                }).catch(err => alert("Camera error: " + err));
             }
-        } catch (e) {
-            console.log("Manual focus not supported");
+        };
+
+        // All calculation logic preserved below
+        window.closeNumpad = () => { numpad.classList.remove('active'); activeInput = null; setTimeout(() => qrText.focus(), 100); };
+
+        window.numTap = (n) => { 
+            if (preview.innerText === '0' && n !== '.') preview.innerText = n; else preview.innerText += n;
+            activeInput.value = preview.innerText;
+            handleRateChange();
+        };
+
+        window.numDel = () => { 
+            preview.innerText = preview.innerText.slice(0, -1) || '0'; 
+            activeInput.value = preview.innerText;
+            handleRateChange();
+        };
+
+        function handleRateChange() {
+            if (activeInput === rateEl) { 
+                const newRate = parseFloat(rateEl.value) || 0;
+                localStorage.setItem("silverRate", rateEl.value); 
+                if(qrText.value){ current = parseLine(qrText.value.trim()); updatePanel(); } 
+                items = items.map(item => calculateItem(item.code, item.wt, newRate, item.making, item.show, item.isHigh));
+                renderHistory();
+            }
         }
-    });
-};
-</script>
+
+        const forceFocus = () => { if (!isModalOpen && !numpad.classList.contains('active') && document.activeElement !== rateEl) { qrText.focus(); } };
+
+        window.onload = () => { const r = localStorage.getItem("silverRate"); if(r) rateEl.value = r; qrText.focus(); };
+
+        document.addEventListener("click", (e) => { if(!e.target.closest('.actions-row') && !e.target.closest('.numpad') && !e.target.closest('.title-row') && !e.target.closest('.focus-container')) setTimeout(forceFocus, 50); });
+
+        qrText.addEventListener("input", function() {
+            errorDiv.style.display = "none";
+            const lines = this.value.split('\n').filter(l => l.trim());
+            if (lines.length > 1) { 
+                // Loop through all but the last line to add to history automatically
+                for (let i = 0; i < lines.length - 1; i++) {
+                    let temp = parseLine(lines[i].trim());
+                    if (temp && !items.some(it => it.code === temp.code)) {
+                        items.push(temp);
+                    }
+                }
+                this.value = lines[lines.length - 1]; 
+                renderHistory(); 
+            }
+            current = parseLine(this.value.trim()); updatePanel();
+        });
+
+        function parseLine(raw) {
+            const p = raw.split(","); if (p.length < 6) return null;
+            const rate = parseFloat(rateEl.value) || 0, code = p[0].trim(), wt = parseFloat(p[3]), making = parseFloat(p[5]);
+            if (isNaN(wt) || isNaN(making)) return null;
+            return calculateItem(code, wt, rate, making);
+        }
+
+        function calculateItem(code, wt, rate, making, show = null, isHigh = null) {
+            const mrp = wt * (rate + making) * 1.03;
+            return { 
+                code, 
+                name: itemNames[code.slice(0,3).toUpperCase()] || "Silver Item", 
+                wt, rate, making, mrp, 
+                isHigh: isHigh !== null ? isHigh : making > 100, 
+                show: show !== null ? show : (making <= 100)
+            };
+        }
+
+        function updatePanel() {
+            if (!current) { resPanel.style.display = "none"; return; }
+            resPanel.style.display = "block";
+            document.getElementById("result-code").textContent = `${current.code} • ${current.name}`;
+            document.getElementById("result-mrp-val").textContent = current.mrp.toFixed(2);
+            const meta = document.getElementById("result-meta");
+            const details = current.show ? `Net wt: ${current.wt.toFixed(3)}g | Rate: ${current.rate}` : "";
+            meta.innerHTML = `<span style="font-weight:500;">${details}</span>` + (current.isHigh ? `<label class="switch"><input type="checkbox" ${current.show?'checked':''} onchange="toggleCurrent(this.checked)"><span class="slider"></span></label>` : "");
+        }
+
+        function renderHistory() {
+            if (!items.length) { histSection.style.display="none"; return; }
+            histSection.style.display="block";
+            resBody.innerHTML = items.map((it, i) => `<tr><td>${i+1}</td><td style="font-weight:600;">${it.code}</td><td>${it.name}</td><td>${it.show ? it.wt.toFixed(3) : '—'}</td><td class="mrp-clickable" ondblclick="openEditModal(${i})">₹${it.mrp.toFixed(2)}</td><td>${it.isHigh ? `<label class="switch"><input type="checkbox" ${it.show?'checked':''} onchange="toggleHist(${i})"><span class="slider"></span></label>` : ''}</td><td><button class="btn-delete" onclick="deleteItem(${i})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button></td></tr>`).join("");
+            totalEl.textContent = items.reduce((s, it) => s + it.mrp, 0).toFixed(2);
+        }
+
+        window.openEditModal = (index) => {
+            activeEditIndex = index; isModalOpen = true; const it = items[index];
+            modalTitle.textContent = `Edit Making: ${it.code}`; modalInput.value = it.making; editModal.style.display = "flex";
+            if(isMobile) { activeInput = modalInput; preview.innerText = modalInput.value; numpad.classList.add('active'); } else { setTimeout(() => modalInput.focus(), 100); }
+        };
+
+        window.closeModal = () => { editModal.style.display = "none"; activeEditIndex = null; isModalOpen = false; if(isMobile) closeNumpad(); else qrText.focus(); };
+
+        window.confirmModalEdit = () => {
+            const newVal = parseFloat(modalInput.value);
+            const rate = parseFloat(rateEl.value) || 0;
+            if (activeEditIndex !== null && !isNaN(newVal)) {
+                const it = items[activeEditIndex]; 
+                items[activeEditIndex] = calculateItem(it.code, it.wt, rate, newVal, it.show, it.isHigh);
+                renderHistory(); closeModal();
+            }
+        };
+
+        window.toggleCurrent = (v) => { if(current){ current.show = v; updatePanel(); }};
+        window.toggleHist = (i) => { items[i].show = !items[i].show; renderHistory(); };
+        window.deleteItem = (i) => { items.splice(i, 1); renderHistory(); qrText.focus(); };
+
+        document.getElementById("add-btn").onclick = () => { 
+            if(current){ 
+                if (items.some(it => it.code === current.code)) { errorDiv.style.display = "block"; return; } 
+                items.push({...current}); 
+                current=null; qrText.value=""; resPanel.style.display="none"; 
+                errorDiv.style.display = "none"; renderHistory(); qrText.focus(); 
+            } 
+        };
+
+        document.getElementById("clear-btn").onclick = () => {
+            current = null; qrText.value = ""; resPanel.style.display = "none"; errorDiv.style.display = "none"; qrText.focus();
+        };
+
+        document.getElementById("reset-btn").onclick = () => { 
+            items=[]; current=null; qrText.value=""; resPanel.style.display="none"; 
+            errorDiv.style.display = "none"; renderHistory(); qrText.focus(); 
+        };
+
+        rateEl.oninput = () => { activeInput = rateEl; handleRateChange(); };
+
+        document.getElementById("sample-btn").onclick = () => { 
+            qrText.value = "STE1,925,1,0.9,1,200,\\Gm,,,,,,,,,,,,,,"; 
+            qrText.dispatchEvent(new Event('input')); qrText.focus(); 
+        };
+
+        modalInput.addEventListener("keydown", (e) => { if(e.key === "Enter") confirmModalEdit(); });
+    </script>
 </body>
 </html>
