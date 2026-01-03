@@ -6,7 +6,7 @@
     <link rel="icon" type="image/png" href="logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet" />
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
     <style>
         :root { 
@@ -78,7 +78,7 @@
             transition: 0.2s; 
         }
 
-        /* Scanner Specific Styling */
+        /* Scanner Styling */
         #reader {
             width: 100%;
             border-radius: 12px;
@@ -86,6 +86,7 @@
             border: 1.5px solid #eee5db;
             margin-bottom: 12px;
             display: none;
+            background: #000;
         }
 
         label { display: block; font-size: 0.8rem; margin-bottom: 6px; color: #8a7b6e; font-weight: 500; }
@@ -291,7 +292,7 @@
 
             <div class="history" id="history-section">
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items: baseline;">
-                    <span style="font-size:0.7rem; text-transform:uppercase; color:#b5a89d; font-weight:700;">History (Double-Click MRP to Edit)</span>
+                    <span style="font-size:0.7rem; text-transform:uppercase; color:#b5a89d; font-weight:700;">History (Double-Click MRP)</span>
                     <span style="font-size:0.9rem; color:var(--maroon-dark);">Total: <b>₹<span id="history-total">0.00</span></b></span>
                 </div>
                 <table class="history-table">
@@ -355,7 +356,6 @@
 
         let items = [], current = null, activeEditIndex = null, isModalOpen = false, activeInput = null;
 
-        // Enhanced Tablet/Mobile Detection
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0);
 
         if (isMobile) {
@@ -366,7 +366,24 @@
             modalInput.onclick = (e) => { e.stopPropagation(); activeInput = modalInput; preview.innerText = modalInput.value; numpad.classList.add('active'); };
         }
 
-        // Camera Scanner Logic
+        // --- NEW AUDIO & SCANNER LOGIC ---
+        
+        // Function to create a beep sound
+        function playBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } catch(e) { console.log("Audio not supported"); }
+        }
+
         const html5QrCode = new Html5Qrcode("reader");
         let isScannerOn = false;
 
@@ -381,18 +398,25 @@
                 isScannerOn = true;
                 html5QrCode.start(
                     { facingMode: "environment" }, 
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    { fps: 15, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
-                        qrText.value = decodedText;
+                        playBeep();
+                        // Paste text into box and add a newline (Enter)
+                        qrText.value = decodedText + "\n";
+                        // Trigger the input logic
                         qrText.dispatchEvent(new Event('input'));
-                        // Optional: stop scanning after one successful read
-                        html5QrCode.stop();
-                        readerDiv.style.display = "none";
-                        isScannerOn = false;
+                        
+                        // Stop scanner and hide after success
+                        html5QrCode.stop().then(() => {
+                            readerDiv.style.display = "none";
+                            isScannerOn = false;
+                        });
                     }
-                ).catch(err => alert("Camera error: " + err));
+                ).catch(err => alert("Camera error: Ensure you are on HTTPS and allow camera access."));
             }
         };
+
+        // --- END OF SCANNER MODS ---
 
         window.closeNumpad = () => { numpad.classList.remove('active'); activeInput = null; setTimeout(() => qrText.focus(), 100); };
 
@@ -412,9 +436,7 @@
             if (activeInput === rateEl) { 
                 const newRate = parseFloat(rateEl.value) || 0;
                 localStorage.setItem("silverRate", rateEl.value); 
-                
                 if(qrText.value){ current = parseLine(qrText.value.trim()); updatePanel(); } 
-                
                 items = items.map(item => calculateItem(item.code, item.wt, newRate, item.making, item.show, item.isHigh));
                 renderHistory();
             }
@@ -512,10 +534,7 @@
             errorDiv.style.display = "none"; renderHistory(); qrText.focus(); 
         };
 
-        rateEl.oninput = () => { 
-            activeInput = rateEl; 
-            handleRateChange(); 
-        };
+        rateEl.oninput = () => { activeInput = rateEl; handleRateChange(); };
 
         document.getElementById("sample-btn").onclick = () => { 
             qrText.value = "STE1,925,1,0.9,1,200,\\Gm,,,,,,,,,,,,,,"; 
