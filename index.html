@@ -78,7 +78,6 @@
             transition: 0.2s; 
         }
 
-        /* Scanner & Focus UI */
         #reader {
             width: 100%;
             border-radius: 12px;
@@ -399,7 +398,6 @@
             } catch(e) {}
         }
 
-        // --- UPDATED CAMERA LOGIC WITH FOCUS & SMART PASTE ---
         const html5QrCode = new Html5Qrcode("reader");
         const focusUI = document.getElementById("focus-ui");
         const focusSlider = document.getElementById("focus-slider");
@@ -420,8 +418,7 @@
                     { fps: 20, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
                         playBeep();
-                        
-                        // Smart Paste: Append below existing text if any
+                        // Paste result + New Line to trigger auto-add
                         if (qrText.value.trim().length > 0) {
                             qrText.value = qrText.value.trim() + "\n" + decodedText + "\n";
                         } else {
@@ -434,10 +431,10 @@
                             readerDiv.style.display = "none";
                             focusUI.style.display = "none";
                             isScannerOn = false;
+                            qrText.focus(); // Re-focus after camera closes
                         });
                     }
                 ).then(() => {
-                    // Try to initialize focus slider if hardware supports it
                     try {
                         const track = html5QrCode.getRunningTrack();
                         const capabilities = track.getCapabilities();
@@ -447,7 +444,6 @@
                             focusSlider.max = capabilities.focusDistance.max;
                             focusSlider.step = capabilities.focusDistance.step;
                             focusSlider.value = track.getSettings().focusDistance || capabilities.focusDistance.min;
-                            
                             focusSlider.oninput = (e) => {
                                 track.applyConstraints({
                                     advanced: [{ focusMode: "manual", focusDistance: parseFloat(e.target.value) }]
@@ -459,8 +455,11 @@
             }
         };
 
-        // All calculation logic preserved below
-        window.closeNumpad = () => { numpad.classList.remove('active'); activeInput = null; setTimeout(() => qrText.focus(), 100); };
+        window.closeNumpad = () => { 
+            numpad.classList.remove('active'); 
+            activeInput = null; 
+            setTimeout(() => qrText.focus(), 150); 
+        };
 
         window.numTap = (n) => { 
             if (preview.innerText === '0' && n !== '.') preview.innerText = n; else preview.innerText += n;
@@ -484,27 +483,62 @@
             }
         }
 
-        const forceFocus = () => { if (!isModalOpen && !numpad.classList.contains('active') && document.activeElement !== rateEl) { qrText.focus(); } };
+        // Logic to keep the QR box selected
+        const forceFocus = () => { 
+            if (!isModalOpen && !numpad.classList.contains('active') && !isScannerOn && document.activeElement !== rateEl && document.activeElement !== modalInput) { 
+                qrText.focus(); 
+            } 
+        };
 
-        window.onload = () => { const r = localStorage.getItem("silverRate"); if(r) rateEl.value = r; qrText.focus(); };
+        window.onload = () => { 
+            const r = localStorage.getItem("silverRate"); 
+            if(r) rateEl.value = r; 
+            qrText.focus(); 
+        };
 
-        document.addEventListener("click", (e) => { if(!e.target.closest('.actions-row') && !e.target.closest('.numpad') && !e.target.closest('.title-row') && !e.target.closest('.focus-container')) setTimeout(forceFocus, 50); });
+        // Improved global click listener
+        document.addEventListener("click", (e) => { 
+            const isControl = e.target.closest('.btn-pill') || 
+                              e.target.closest('.btn-small') || 
+                              e.target.closest('.numpad') || 
+                              e.target.closest('.focus-container') || 
+                              e.target.closest('.switch') ||
+                              e.target.closest('input');
+            
+            if(!isControl) {
+                setTimeout(forceFocus, 50); 
+            }
+        });
 
         qrText.addEventListener("input", function() {
             errorDiv.style.display = "none";
             const lines = this.value.split('\n').filter(l => l.trim());
             if (lines.length > 1) { 
-                // Loop through all but the last line to add to history automatically
                 for (let i = 0; i < lines.length - 1; i++) {
                     let temp = parseLine(lines[i].trim());
-                    if (temp && !items.some(it => it.code === temp.code)) {
-                        items.push(temp);
+                    if (temp) {
+                        if (!items.some(it => it.code === temp.code)) {
+                            items.push(temp);
+                        } else {
+                            errorDiv.style.display = "block";
+                        }
                     }
                 }
                 this.value = lines[lines.length - 1]; 
                 renderHistory(); 
             }
-            current = parseLine(this.value.trim()); updatePanel();
+            current = parseLine(this.value.trim()); 
+            updatePanel();
+        });
+
+        // Manual Enter key support for the text area
+        qrText.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                if (current) {
+                    document.getElementById("add-btn").click();
+                }
+            }
         });
 
         function parseLine(raw) {
