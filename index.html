@@ -285,7 +285,7 @@
 
             <div style="margin-bottom: 12px;">
                 <label>Scan QR</label>
-                <textarea id="qr-text" rows="2" placeholder="Scan result appears here..."></textarea>
+                <textarea id="qr-text" rows="2" placeholder="Scan result appears here..." inputmode="none"></textarea>
             </div>
 
             <div style="margin-bottom: 8px;">
@@ -418,9 +418,11 @@
                     { fps: 20, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
                         playBeep();
-                        // Paste result + New Line to trigger auto-add
-                        if (qrText.value.trim().length > 0) {
-                            qrText.value = qrText.value.trim() + "\n" + decodedText + "\n";
+                        
+                        // FIX: Ensure every scan ends with a newline to trigger the logic
+                        let currentVal = qrText.value.trim();
+                        if (currentVal.length > 0) {
+                            qrText.value = currentVal + "\n" + decodedText + "\n";
                         } else {
                             qrText.value = decodedText + "\n";
                         }
@@ -431,7 +433,7 @@
                             readerDiv.style.display = "none";
                             focusUI.style.display = "none";
                             isScannerOn = false;
-                            qrText.focus(); // Re-focus after camera closes
+                            qrText.focus();
                         });
                     }
                 ).then(() => {
@@ -450,16 +452,12 @@
                                 });
                             };
                         }
-                    } catch(e) { console.log("Focus hardware control not supported"); }
+                    } catch(e) {}
                 }).catch(err => alert("Camera error: " + err));
             }
         };
 
-        window.closeNumpad = () => { 
-            numpad.classList.remove('active'); 
-            activeInput = null; 
-            setTimeout(() => qrText.focus(), 150); 
-        };
+        window.closeNumpad = () => { numpad.classList.remove('active'); activeInput = null; setTimeout(() => qrText.focus(), 100); };
 
         window.numTap = (n) => { 
             if (preview.innerText === '0' && n !== '.') preview.innerText = n; else preview.innerText += n;
@@ -483,29 +481,16 @@
             }
         }
 
-        // Logic to keep the QR box selected
         const forceFocus = () => { 
-            if (!isModalOpen && !numpad.classList.contains('active') && !isScannerOn && document.activeElement !== rateEl && document.activeElement !== modalInput) { 
+            if (!isModalOpen && !numpad.classList.contains('active') && !isScannerOn && document.activeElement !== rateEl) { 
                 qrText.focus(); 
             } 
         };
 
-        window.onload = () => { 
-            const r = localStorage.getItem("silverRate"); 
-            if(r) rateEl.value = r; 
-            qrText.focus(); 
-        };
+        window.onload = () => { const r = localStorage.getItem("silverRate"); if(r) rateEl.value = r; qrText.focus(); };
 
-        // Improved global click listener
         document.addEventListener("click", (e) => { 
-            const isControl = e.target.closest('.btn-pill') || 
-                              e.target.closest('.btn-small') || 
-                              e.target.closest('.numpad') || 
-                              e.target.closest('.focus-container') || 
-                              e.target.closest('.switch') ||
-                              e.target.closest('input');
-            
-            if(!isControl) {
+            if(!e.target.closest('.actions-row') && !e.target.closest('.numpad') && !e.target.closest('.title-row') && !e.target.closest('.focus-container') && !e.target.closest('input')) {
                 setTimeout(forceFocus, 50); 
             }
         });
@@ -513,6 +498,8 @@
         qrText.addEventListener("input", function() {
             errorDiv.style.display = "none";
             const lines = this.value.split('\n').filter(l => l.trim());
+            
+            // Logic to move full lines (scans) to history immediately
             if (lines.length > 1) { 
                 for (let i = 0; i < lines.length - 1; i++) {
                     let temp = parseLine(lines[i].trim());
@@ -524,21 +511,12 @@
                         }
                     }
                 }
+                // Keep only the last line (partial scan) in the box
                 this.value = lines[lines.length - 1]; 
                 renderHistory(); 
             }
             current = parseLine(this.value.trim()); 
             updatePanel();
-        });
-
-        // Manual Enter key support for the text area
-        qrText.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                if (current) {
-                    document.getElementById("add-btn").click();
-                }
-            }
         });
 
         function parseLine(raw) {
@@ -620,7 +598,11 @@
 
         document.getElementById("sample-btn").onclick = () => { 
             qrText.value = "STE1,925,1,0.9,1,200,\\Gm,,,,,,,,,,,,,,"; 
-            qrText.dispatchEvent(new Event('input')); qrText.focus(); 
+            qrText.dispatchEvent(new Event('input')); 
+            // Simulate enter for sample
+            qrText.value += "\n";
+            qrText.dispatchEvent(new Event('input')); 
+            qrText.focus(); 
         };
 
         modalInput.addEventListener("keydown", (e) => { if(e.key === "Enter") confirmModalEdit(); });
