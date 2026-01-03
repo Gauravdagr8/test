@@ -78,6 +78,7 @@
             transition: 0.2s; 
         }
 
+        /* Scanner & Focus UI */
         #reader {
             width: 100%;
             border-radius: 12px;
@@ -88,15 +89,19 @@
             background: #000;
         }
 
-        /* Focus UI Styling */
-        #focus-container {
+        .focus-container {
             display: none;
             background: #fdfaf7;
-            padding: 15px;
+            padding: 10px;
             border-radius: 12px;
-            border: 1.5px solid #eee5db;
+            border: 1px solid #eee5db;
             margin-bottom: 12px;
+            align-items: center;
+            gap: 10px;
         }
+
+        .focus-container label { margin-bottom: 0; flex-shrink: 0; }
+        .focus-container input { flex-grow: 1; accent-color: var(--maroon); }
 
         label { display: block; font-size: 0.8rem; margin-bottom: 6px; color: #8a7b6e; font-weight: 500; }
 
@@ -110,6 +115,44 @@
             background: #fbf9f7; 
             outline: none; 
             transition: border-color 0.3s; 
+        }
+
+        textarea:focus { border-color: var(--gold); background: #fff; }
+
+        .modal-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.4); 
+            backdrop-filter: blur(4px); 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100; 
+        }
+
+        .modal-content { 
+            background: #fff; 
+            padding: 24px; 
+            border-radius: 20px; 
+            width: 90%; 
+            max-width: 350px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            text-align: center; 
+        }
+
+        .modal-title { font-family: "Playfair Display", serif; font-size: 1.2rem; color: var(--maroon-dark); margin-bottom: 16px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+        #duplicate-error { 
+            color: var(--maroon); 
+            font-size: 0.75rem; 
+            margin: 8px 0; 
+            text-align: center; 
+            display: none; 
+            font-weight: 600; 
+            background: #fff1f1; 
+            padding: 6px; 
+            border-radius: 8px; 
         }
 
         .result-panel { 
@@ -158,6 +201,9 @@
         .history-table th, .history-table td { padding: 12px 6px; text-align: right; border-bottom: 1px solid #f0e9e1; }
         .history-table th:nth-child(2), .history-table td:nth-child(2), .history-table th:nth-child(3), .history-table td:nth-child(3) { text-align: left; }
         .history-table th { color: #b5a89d; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; }
+
+        .mrp-clickable { cursor: pointer; color: var(--maroon-dark); font-weight: 600; border-bottom: 1px dashed #d9b25f; }
+        .btn-delete { background: none; border: none; cursor: pointer; color: #c9bcaf; width: 100%; display: flex; justify-content: center; }
 
         .switch { position: relative; display: inline-block; width: 32px; height: 18px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -232,17 +278,15 @@
             </div>
 
             <div id="reader"></div>
-
-            <div id="focus-container">
-                <label style="display:flex; justify-content:space-between;">
-                    Manual Focus <span id="focus-val">Auto</span>
-                </label>
-                <input type="range" id="focus-slider" min="0" max="100" step="1" style="width:100%; accent-color:var(--maroon); cursor:pointer;">
+            
+            <div class="focus-container" id="focus-ui">
+                <label>Focus</label>
+                <input type="range" id="focus-slider" min="0" max="100" value="50">
             </div>
 
             <div style="margin-bottom: 12px;">
                 <label>Scan QR</label>
-                <textarea id="qr-text" rows="2" placeholder="Scan results appear here..."></textarea>
+                <textarea id="qr-text" rows="2" placeholder="Scan result appears here..."></textarea>
             </div>
 
             <div style="margin-bottom: 8px;">
@@ -250,7 +294,7 @@
                 <input id="silver-rate" type="number" step="0.01" value="225" />
             </div>
 
-            <div id="duplicate-error" style="display:none; color:var(--maroon); font-size:0.75rem; text-align:center;">⚠ Item already in history.</div>
+            <div id="duplicate-error">⚠ Item already in history.</div>
 
             <div class="result-panel" id="result-panel">
                 <div style="font-size:0.65rem; text-transform:uppercase; color:#b0956b; letter-spacing:0.25em;">MRP Estimate</div>
@@ -267,7 +311,7 @@
 
             <div class="history" id="history-section">
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items: baseline;">
-                    <span style="font-size:0.7rem; text-transform:uppercase; color:#b5a89d; font-weight:700;">History</span>
+                    <span style="font-size:0.7rem; text-transform:uppercase; color:#b5a89d; font-weight:700;">History (Double-Click MRP)</span>
                     <span style="font-size:0.9rem; color:var(--maroon-dark);">Total: <b>₹<span id="history-total">0.00</span></b></span>
                 </div>
                 <table class="history-table">
@@ -278,11 +322,24 @@
                             <th>Item</th>
                             <th>Net wt</th>
                             <th>MRP</th>
-                            <th></th>
+                            <th style="width:40px;"></th>
+                            <th style="width:30px;"></th>
                         </tr>
                     </thead>
                     <tbody id="history-body"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <div class="modal-title" id="modal-item-title">Update Making</div>
+            <label>New Making Charges (₹/gm)</label>
+            <input type="number" id="modal-input" placeholder="Enter value">
+            <div class="modal-actions">
+                <button class="btn-pill btn-primary" onclick="confirmModalEdit()">Save</button>
+                <button class="btn-pill btn-outline" onclick="closeModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -294,7 +351,7 @@
             <button onclick="numTap('4')">4</button><button onclick="numTap('5')">5</button><button onclick="numTap('6')">6</button>
             <button onclick="numTap('7')">7</button><button onclick="numTap('8')">8</button><button onclick="numTap('9')">9</button>
             <button onclick="numTap('.')">.</button><button onclick="numTap('0')">0</button><button onclick="numDel()">⌫</button>
-            <button class="done-btn" onclick="closeNumpad()">DONE</button>
+            <button class="done-btn" onclick="closeNumpad()">DONE / CLOSE</button>
         </div>
     </div>
 
@@ -304,16 +361,30 @@
               resPanel = document.getElementById("result-panel"), 
               resBody = document.getElementById("history-body"), 
               histSection = document.getElementById("history-section"), 
-              totalEl = document.getElementById("history-total");
+              totalEl = document.getElementById("history-total"), 
+              errorDiv = document.getElementById("duplicate-error");
 
-        const focusContainer = document.getElementById('focus-container');
-        const focusSlider = document.getElementById('focus-slider');
-        const focusVal = document.getElementById('focus-val');
+        const editModal = document.getElementById("edit-modal"), 
+              modalInput = document.getElementById("modal-input"), 
+              modalTitle = document.getElementById("modal-item-title");
 
-        let items = [], current = null, isScannerOn = false;
-        const html5QrCode = new Html5Qrcode("reader");
+        const numpad = document.getElementById("numpad"), 
+              preview = document.getElementById("num-preview");
 
-        // Beep Sound
+        const itemNames = {"SAS":"Agarbati Stand","SAL":"Amoliya","SAM":"Animal Murti","SAT":"Antiques","SBM":"Baby Braclet","SKB":"Baby Kada","SBJ":"Baby Leg Kada","SBB":"Baju Band","SBG":"Bangles","SBN":"Banta","SBL":"Bell","SBX":"Box","SBK":"Bucket","SCS":"Chain Pandant Set","SCH":"Chains","SCA":"Challa","SCT":"Chatar","SCG":"Chirag","SCL":"Chotla","SCB":"Coins & Bars","SCR":"Couple Rings","SCC":"Couple Set","SCU":"Cup","SDY":"Diya","SER":"Earings","SFC":"Face/Mukota","SCP":"Fancy Pandant","SFW":"Ferwa","SFL":"Flower","SFP":"Foolpatra","SGN":"Ganpati","SGB":"Gents Bracelet","SGR":"Gents Ring","SGH":"Ghar","SGL":"Glass","SGP":"God Pandant","SBT":"Gugra","SGD":"Gulabdani","SHP":"Hath Pan","SID":"Itardani","SJO":"Jodva","SJL":"Jula","SKA":"KADA","SKK":"Kamar Kandora","SKP":"Kapoor Aarti","SKR":"Karanda","SKY":"KEY CHAIN","SKI":"Kohiri/Keri","SLB":"Ladies Bracelet","SLR":"Ladies Ring","SLT":"Lanturn","SLK":"Leg Kada","SLO":"Lota","SLW":"Loti+Wati","SMP":"Mangalsutra Pandant","SMS":"Mangalsutra Set","SMN":"Mani","SPJ":"Mix Pooja","SMT":"Moti Ring","SMK":"Mukut","SMR":"Murti","SNY":"NARYAL","SNK":"Necklace","SPH":"PATH","SPI":"PATRA & YANTRA","SPL":"Payal","SPK":"PICHKARI","SSP":"PIN/BROUCH","SPB":"PLAIN BANDS","SPR":"PURSE","SRD":"Rudhraksh & More","SSH":"Shihasan","SNS":"Shivling+Nag","SSY":"SHREE YANTRA","SSM":"SOLID MURTI","SSF":"Spoon/Fali","STB":"TABIZ","STT":"TATTALU","STE":"Test","STL":"THALI","STG":"Toe Rings","STI":"Trishul","STU":"TULSI","STR":"TURTLE RING","SVG":"Vegetable","SWC":"Waist Chain","SWL":"Watch Charms","SWS":"Watches","SWT":"Wati"};
+
+        let items = [], current = null, activeEditIndex = null, isModalOpen = false, activeInput = null;
+
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0);
+
+        if (isMobile) {
+            document.body.classList.add('is-mobile');
+            rateEl.readOnly = true; 
+            modalInput.readOnly = true;
+            rateEl.onclick = (e) => { e.stopPropagation(); activeInput = rateEl; preview.innerText = rateEl.value; numpad.classList.add('active'); };
+            modalInput.onclick = (e) => { e.stopPropagation(); activeInput = modalInput; preview.innerText = modalInput.value; numpad.classList.add('active'); };
+        }
+
         function playBeep() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -323,17 +394,23 @@
                 gainNode.connect(audioCtx.destination);
                 oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.1);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
             } catch(e) {}
         }
 
-        // Camera Logic
+        // --- UPDATED CAMERA LOGIC WITH FOCUS & SMART PASTE ---
+        const html5QrCode = new Html5Qrcode("reader");
+        const focusUI = document.getElementById("focus-ui");
+        const focusSlider = document.getElementById("focus-slider");
+        let isScannerOn = false;
+
         document.getElementById("scan-camera-btn").onclick = async () => {
             const readerDiv = document.getElementById("reader");
             if(isScannerOn) {
                 await html5QrCode.stop();
                 readerDiv.style.display = "none";
-                focusContainer.style.display = "none";
+                focusUI.style.display = "none";
                 isScannerOn = false;
             } else {
                 readerDiv.style.display = "block";
@@ -343,47 +420,86 @@
                     { fps: 20, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
                         playBeep();
-                        // Smart Paste: Add newline if box is not empty
-                        if (qrText.value.trim()) {
-                            qrText.value += "\n" + decodedText + "\n";
+                        
+                        // Smart Paste: Append below existing text if any
+                        if (qrText.value.trim().length > 0) {
+                            qrText.value = qrText.value.trim() + "\n" + decodedText + "\n";
                         } else {
                             qrText.value = decodedText + "\n";
                         }
+                        
                         qrText.dispatchEvent(new Event('input'));
                         
                         html5QrCode.stop().then(() => {
                             readerDiv.style.display = "none";
-                            focusContainer.style.display = "none";
+                            focusUI.style.display = "none";
                             isScannerOn = false;
                         });
                     }
                 ).then(() => {
-                    // Try to enable Focus Control
-                    const track = html5QrCode.getRunningTrack();
-                    const capabilities = track.getCapabilities();
-                    if (capabilities.focusDistance) {
-                        focusContainer.style.display = "block";
-                        focusSlider.min = capabilities.focusDistance.min;
-                        focusSlider.max = capabilities.focusDistance.max;
-                        focusSlider.step = capabilities.focusDistance.step;
-                        focusSlider.oninput = async (e) => {
-                            focusVal.innerText = e.target.value;
-                            await track.applyConstraints({
-                                advanced: [{ focusMode: "manual", focusDistance: parseFloat(e.target.value) }]
-                            });
-                        };
-                    }
-                });
+                    // Try to initialize focus slider if hardware supports it
+                    try {
+                        const track = html5QrCode.getRunningTrack();
+                        const capabilities = track.getCapabilities();
+                        if (capabilities.focusDistance) {
+                            focusUI.style.display = "flex";
+                            focusSlider.min = capabilities.focusDistance.min;
+                            focusSlider.max = capabilities.focusDistance.max;
+                            focusSlider.step = capabilities.focusDistance.step;
+                            focusSlider.value = track.getSettings().focusDistance || capabilities.focusDistance.min;
+                            
+                            focusSlider.oninput = (e) => {
+                                track.applyConstraints({
+                                    advanced: [{ focusMode: "manual", focusDistance: parseFloat(e.target.value) }]
+                                });
+                            };
+                        }
+                    } catch(e) { console.log("Focus hardware control not supported"); }
+                }).catch(err => alert("Camera error: " + err));
             }
         };
 
-        // Standard App Logic
+        // All calculation logic preserved below
+        window.closeNumpad = () => { numpad.classList.remove('active'); activeInput = null; setTimeout(() => qrText.focus(), 100); };
+
+        window.numTap = (n) => { 
+            if (preview.innerText === '0' && n !== '.') preview.innerText = n; else preview.innerText += n;
+            activeInput.value = preview.innerText;
+            handleRateChange();
+        };
+
+        window.numDel = () => { 
+            preview.innerText = preview.innerText.slice(0, -1) || '0'; 
+            activeInput.value = preview.innerText;
+            handleRateChange();
+        };
+
+        function handleRateChange() {
+            if (activeInput === rateEl) { 
+                const newRate = parseFloat(rateEl.value) || 0;
+                localStorage.setItem("silverRate", rateEl.value); 
+                if(qrText.value){ current = parseLine(qrText.value.trim()); updatePanel(); } 
+                items = items.map(item => calculateItem(item.code, item.wt, newRate, item.making, item.show, item.isHigh));
+                renderHistory();
+            }
+        }
+
+        const forceFocus = () => { if (!isModalOpen && !numpad.classList.contains('active') && document.activeElement !== rateEl) { qrText.focus(); } };
+
+        window.onload = () => { const r = localStorage.getItem("silverRate"); if(r) rateEl.value = r; qrText.focus(); };
+
+        document.addEventListener("click", (e) => { if(!e.target.closest('.actions-row') && !e.target.closest('.numpad') && !e.target.closest('.title-row') && !e.target.closest('.focus-container')) setTimeout(forceFocus, 50); });
+
         qrText.addEventListener("input", function() {
+            errorDiv.style.display = "none";
             const lines = this.value.split('\n').filter(l => l.trim());
             if (lines.length > 1) { 
+                // Loop through all but the last line to add to history automatically
                 for (let i = 0; i < lines.length - 1; i++) {
                     let temp = parseLine(lines[i].trim());
-                    if (temp && !items.some(it => it.code === temp.code)) items.push(temp);
+                    if (temp && !items.some(it => it.code === temp.code)) {
+                        items.push(temp);
+                    }
                 }
                 this.value = lines[lines.length - 1]; 
                 renderHistory(); 
@@ -394,29 +510,86 @@
         function parseLine(raw) {
             const p = raw.split(","); if (p.length < 6) return null;
             const rate = parseFloat(rateEl.value) || 0, code = p[0].trim(), wt = parseFloat(p[3]), making = parseFloat(p[5]);
+            if (isNaN(wt) || isNaN(making)) return null;
+            return calculateItem(code, wt, rate, making);
+        }
+
+        function calculateItem(code, wt, rate, making, show = null, isHigh = null) {
             const mrp = wt * (rate + making) * 1.03;
-            return { code, wt, making, mrp, rate };
+            return { 
+                code, 
+                name: itemNames[code.slice(0,3).toUpperCase()] || "Silver Item", 
+                wt, rate, making, mrp, 
+                isHigh: isHigh !== null ? isHigh : making > 100, 
+                show: show !== null ? show : (making <= 100)
+            };
         }
 
         function updatePanel() {
             if (!current) { resPanel.style.display = "none"; return; }
             resPanel.style.display = "block";
-            document.getElementById("result-code").textContent = current.code;
+            document.getElementById("result-code").textContent = `${current.code} • ${current.name}`;
             document.getElementById("result-mrp-val").textContent = current.mrp.toFixed(2);
+            const meta = document.getElementById("result-meta");
+            const details = current.show ? `Net wt: ${current.wt.toFixed(3)}g | Rate: ${current.rate}` : "";
+            meta.innerHTML = `<span style="font-weight:500;">${details}</span>` + (current.isHigh ? `<label class="switch"><input type="checkbox" ${current.show?'checked':''} onchange="toggleCurrent(this.checked)"><span class="slider"></span></label>` : "");
         }
 
         function renderHistory() {
             if (!items.length) { histSection.style.display="none"; return; }
             histSection.style.display="block";
-            resBody.innerHTML = items.map((it, i) => `<tr><td>${i+1}</td><td>${it.code}</td><td>Silver Item</td><td>${it.wt.toFixed(3)}</td><td>₹${it.mrp.toFixed(2)}</td><td><button onclick="items.splice(${i},1);renderHistory()">✕</button></td></tr>`).join("");
+            resBody.innerHTML = items.map((it, i) => `<tr><td>${i+1}</td><td style="font-weight:600;">${it.code}</td><td>${it.name}</td><td>${it.show ? it.wt.toFixed(3) : '—'}</td><td class="mrp-clickable" ondblclick="openEditModal(${i})">₹${it.mrp.toFixed(2)}</td><td>${it.isHigh ? `<label class="switch"><input type="checkbox" ${it.show?'checked':''} onchange="toggleHist(${i})"><span class="slider"></span></label>` : ''}</td><td><button class="btn-delete" onclick="deleteItem(${i})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button></td></tr>`).join("");
             totalEl.textContent = items.reduce((s, it) => s + it.mrp, 0).toFixed(2);
         }
 
-        document.getElementById("add-btn").onclick = () => { 
-            if(current) { items.push({...current}); current=null; qrText.value=""; resPanel.style.display="none"; renderHistory(); } 
+        window.openEditModal = (index) => {
+            activeEditIndex = index; isModalOpen = true; const it = items[index];
+            modalTitle.textContent = `Edit Making: ${it.code}`; modalInput.value = it.making; editModal.style.display = "flex";
+            if(isMobile) { activeInput = modalInput; preview.innerText = modalInput.value; numpad.classList.add('active'); } else { setTimeout(() => modalInput.focus(), 100); }
         };
 
-        document.getElementById("reset-btn").onclick = () => { items=[]; renderHistory(); qrText.value=""; resPanel.style.display="none"; };
+        window.closeModal = () => { editModal.style.display = "none"; activeEditIndex = null; isModalOpen = false; if(isMobile) closeNumpad(); else qrText.focus(); };
+
+        window.confirmModalEdit = () => {
+            const newVal = parseFloat(modalInput.value);
+            const rate = parseFloat(rateEl.value) || 0;
+            if (activeEditIndex !== null && !isNaN(newVal)) {
+                const it = items[activeEditIndex]; 
+                items[activeEditIndex] = calculateItem(it.code, it.wt, rate, newVal, it.show, it.isHigh);
+                renderHistory(); closeModal();
+            }
+        };
+
+        window.toggleCurrent = (v) => { if(current){ current.show = v; updatePanel(); }};
+        window.toggleHist = (i) => { items[i].show = !items[i].show; renderHistory(); };
+        window.deleteItem = (i) => { items.splice(i, 1); renderHistory(); qrText.focus(); };
+
+        document.getElementById("add-btn").onclick = () => { 
+            if(current){ 
+                if (items.some(it => it.code === current.code)) { errorDiv.style.display = "block"; return; } 
+                items.push({...current}); 
+                current=null; qrText.value=""; resPanel.style.display="none"; 
+                errorDiv.style.display = "none"; renderHistory(); qrText.focus(); 
+            } 
+        };
+
+        document.getElementById("clear-btn").onclick = () => {
+            current = null; qrText.value = ""; resPanel.style.display = "none"; errorDiv.style.display = "none"; qrText.focus();
+        };
+
+        document.getElementById("reset-btn").onclick = () => { 
+            items=[]; current=null; qrText.value=""; resPanel.style.display="none"; 
+            errorDiv.style.display = "none"; renderHistory(); qrText.focus(); 
+        };
+
+        rateEl.oninput = () => { activeInput = rateEl; handleRateChange(); };
+
+        document.getElementById("sample-btn").onclick = () => { 
+            qrText.value = "STE1,925,1,0.9,1,200,\\Gm,,,,,,,,,,,,,,"; 
+            qrText.dispatchEvent(new Event('input')); qrText.focus(); 
+        };
+
+        modalInput.addEventListener("keydown", (e) => { if(e.key === "Enter") confirmModalEdit(); });
     </script>
 </body>
 </html>
